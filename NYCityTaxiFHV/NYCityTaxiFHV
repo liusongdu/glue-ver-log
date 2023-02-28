@@ -1,0 +1,60 @@
+import sys
+from awsglue.transforms import *
+from awsglue.utils import getResolvedOptions
+from pyspark.context import SparkContext
+from awsglue.context import GlueContext
+from awsglue.job import Job
+from pyspark.sql.functions import lit
+from awsglue.dynamicframe import DynamicFrame
+
+## @params: [JOB_NAME]
+args = getResolvedOptions(sys.argv, ['JOB_NAME'])
+
+sc = SparkContext()
+glueContext = GlueContext(sc)
+spark = glueContext.spark_session
+job = Job(glueContext)
+job.init(args['JOB_NAME'], args)
+## @type: DataSource
+## @args: [database = "nycitytaxianalysis", table_name = "blog_fhv", transformation_ctx = "datasource0"]
+## @return: datasource0
+## @inputs: []
+datasource0 = glueContext.create_dynamic_frame.from_catalog(database = "nycitytaxianalysis", table_name = "blog_fhv", transformation_ctx = "datasource0")
+## @type: ApplyMapping
+## @args: [mapping = [("pickup_date", "string", "pickup_date", "timestamp")], transformation_ctx = "applymapping1"]
+## @return: applymapping1
+## @inputs: [frame = datasource0]
+applymapping1 = ApplyMapping.apply(frame = datasource0, mappings = [("pickup_date", "string", "pickup_date", "timestamp")], transformation_ctx = "applymapping1")
+## @type: SelectFields
+## @args: [paths = ["vendorid", "pickup_date", "dropoff_date", "passenger_count", "trip_distance", "pickup_longitude", "pickup_latitude", "ratecodeid", "store_and_fwd_flag", "dropoff_longitude", "dropoff_latitude", "payment_type", "fare_amount", "extra", "mta_tax", "tip_amount", "tolls_amount", "improvement_surcharge", "total_amount", "type"], transformation_ctx = "selectfields2"]
+## @return: selectfields2
+## @inputs: [frame = applymapping1]
+selectfields2 = SelectFields.apply(frame = applymapping1, paths = ["vendorid", "pickup_date", "dropoff_date", "passenger_count", "trip_distance", "pickup_longitude", "pickup_latitude", "ratecodeid", "store_and_fwd_flag", "dropoff_longitude", "dropoff_latitude", "payment_type", "fare_amount", "extra", "mta_tax", "tip_amount", "tolls_amount", "improvement_surcharge", "total_amount", "type"], transformation_ctx = "selectfields2")
+## @type: ResolveChoice
+## @args: [choice = "MATCH_CATALOG", database = "nycitytaxianalysis", table_name = "canonicaldata", transformation_ctx = "resolvechoice3"]
+## @return: resolvechoice3
+## @inputs: [frame = selectfields2]
+resolvechoice3 = ResolveChoice.apply(frame = selectfields2, choice = "MATCH_CATALOG", database = "nycitytaxianalysis", table_name = "canonicaldata", transformation_ctx = "resolvechoice3")
+## @type: ResolveChoice
+## @args: [choice = "make_struct", transformation_ctx = "resolvechoice4"]
+## @return: resolvechoice4
+## @inputs: [frame = resolvechoice3]
+resolvechoice4 = ResolveChoice.apply(frame = resolvechoice3, choice = "make_struct", transformation_ctx = "resolvechoice4")
+
+##----------------------------------
+#convert to a Spark DataFrame...
+customDF = resolvechoice4.toDF()
+ 
+#add a new column for "type"
+customDF = customDF.withColumn("type", lit('fhv'))
+ 
+# Convert back to a DynamicFrame for further processing.
+customDynamicFrame = DynamicFrame.fromDF(customDF, glueContext, "customDF_df")
+##----------------------------------
+
+## @type: DataSink
+## @args: [database = "nycitytaxianalysis", table_name = "canonicaldata", transformation_ctx = "datasink5"]
+## @return: datasink5
+## @inputs: [frame = resolvechoice4]
+datasink5 = glueContext.write_dynamic_frame.from_options(frame = customDynamicFrame, connection_type = "s3", connection_options = {"path": "s3://aws-glue-temporary-124011853020-us-west-2/glue-blog/"}, format = "parquet", transformation_ctx = "datasink5")
+job.commit()

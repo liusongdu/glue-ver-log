@@ -1,0 +1,33 @@
+{
+  "name" : "NYCityTaxiFHV",
+  "description" : "",
+  "role" : "arn:aws:iam::124011853020:role/AWSGlueServiceRoleDefault",
+  "executionProperty" : {
+    "maxConcurrentRuns" : 1
+  },
+  "command" : {
+    "name" : "glueetl",
+    "scriptLocation" : "s3://aws-glue-scripts-124011853020-us-west-2/root/NYCityTaxiFHV",
+    "pythonVersion" : "3"
+  },
+  "defaultArguments" : {
+    "--job-bookmark-option" : "job-bookmark-disable",
+    "--enable-job-insights" : "false",
+    "--job-language" : "python",
+    "--TempDir" : "s3://aws-glue-temporary-124011853020-us-west-2/root"
+  },
+  "maxRetries" : 0,
+  "allocatedCapacity" : 10,
+  "timeout" : 2880,
+  "maxCapacity" : 10.0,
+  "glueVersion" : "2.0",
+  "numberOfWorkers" : 10,
+  "workerType" : "G.1X",
+  "executionClass" : "STANDARD",
+  "sourceControlDetails" : {
+    "provider" : "GITHUB",
+    "repository" : "glue-ver-log",
+    "branch" : "main",
+    "folder" : "NYCityTaxiFHV"
+  }
+}
